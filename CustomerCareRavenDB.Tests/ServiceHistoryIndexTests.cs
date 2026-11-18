@@ -36,29 +36,42 @@ public class ServiceHistoryIndexTests : TestDatabase
         await session.SaveChangesAsync();
     }
 
-    public static TheoryData<string?, string?, string?, string?, string?, string[]> Cases => new()
+    // Chỉ chốt các trường hợp bộ mẫu gốc vẫn giữ bất biến (customers/001 chỉ có history 001).
+    // Các bộ lọc khác được đối chiếu với truy vấn collection trong Filter_MatchesPreviousCollectionQuery.
+    public static TheoryData<string?, string?, string?, string?, string?, string[]> ExactCases => new()
     {
-        { null, null, null, null, null, ["servicehistories/002", "servicehistories/001"] },
         { "customers/001", null, null, null, null, ["servicehistories/001"] },
-        { "customers/002", null, null, null, null, ["servicehistories/002"] },
         { "customers/999", null, null, null, null, [] },
-        { null, "staffs/002", null, null, null, ["servicehistories/002"] },
-        { null, null, "services/001", null, null, ["servicehistories/001"] },
         { null, null, null, "2026-02-01", "2026-02-01", ["servicehistories/001"] },
-        { null, null, null, "2026-03-10", "2026-03-10", ["servicehistories/002"] }, // 23:30 UTC vẫn thuộc ngày 10
-        { null, null, null, "2026-02-02", null, ["servicehistories/002"] },
-        { null, null, null, null, "2026-01-31", [] },
         { null, null, null, "2026-03-01", "2026-01-01", [] },
         { "customers/001", null, null, "2026-02-01", "2026-02-28", ["servicehistories/001"] },
-        { "customers/002", null, null, "2026-02-01", "2026-02-28", [] },
         { "customers/001", "staffs/001", "services/001", "2026-02-01", "2026-02-01", ["servicehistories/001"] },
         { "customers/001", "staffs/002", null, null, null, [] },
+    };
+
+    public static TheoryData<string?, string?, string?, string?, string?> CompareCases => new()
+    {
+        { null, null, null, null, null },
+        { "customers/001", null, null, null, null },
+        { "customers/002", null, null, null, null },
+        { "customers/999", null, null, null, null },
+        { null, "staffs/002", null, null, null },
+        { null, null, "services/001", null, null },
+        { null, null, null, "2026-02-01", "2026-02-01" },
+        { null, null, null, "2026-03-10", "2026-03-10" },
+        { null, null, null, "2026-02-02", null },
+        { null, null, null, null, "2026-01-31" },
+        { null, null, null, "2026-03-01", "2026-01-01" },
+        { "customers/001", null, null, "2026-02-01", "2026-02-28" },
+        { "customers/002", null, null, "2026-02-01", "2026-02-28" },
+        { "customers/001", "staffs/001", "services/001", "2026-02-01", "2026-02-01" },
+        { "customers/001", "staffs/002", null, null, null },
     };
 
     private static DateTime? D(string? s) => s == null ? null : DateTime.Parse(s);
 
     [Theory]
-    [MemberData(nameof(Cases))]
+    [MemberData(nameof(ExactCases))]
     public async Task Filter_UsesStaticIndex_AndMatchesExpectedRows(
         string? customerId, string? staffId, string? serviceId, string? from, string? to, string[] expected)
     {
@@ -66,6 +79,7 @@ public class ServiceHistoryIndexTests : TestDatabase
         var results = await ServiceHistoryQueries.Filter(session, customerId, staffId, serviceId, D(from), D(to))
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(10)))
             .Statistics(out QueryStatistics stats)
+            .Take(500)
             .ToListAsync();
 
         Assert.Equal(IndexName, stats.IndexName);
@@ -73,18 +87,19 @@ public class ServiceHistoryIndexTests : TestDatabase
     }
 
     [Theory]
-    [MemberData(nameof(Cases))]
+    [MemberData(nameof(CompareCases))]
     public async Task Filter_MatchesPreviousCollectionQuery(
-        string? customerId, string? staffId, string? serviceId, string? from, string? to, string[] _)
+        string? customerId, string? staffId, string? serviceId, string? from, string? to)
     {
         using var session = Context.OpenAsyncSession();
         var viaIndex = await ServiceHistoryQueries.Filter(session, customerId, staffId, serviceId, D(from), D(to))
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(10)))
+            .Take(500)
             .ToListAsync();
 
         // Cách lọc cũ: trên toàn bộ collection (tính ở bộ nhớ, cùng điều kiện).
         var all = await session.Query<ServiceHistory>()
-            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(10))).ToListAsync();
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(10))).Take(500).ToListAsync();
         var start = D(from)?.Date; var end = D(to)?.Date.AddDays(1);
         var expected = all
             .Where(h => customerId == null || h.CustomerId == customerId)
@@ -114,10 +129,18 @@ public class ServiceHistoryIndexTests : TestDatabase
         var controller = new ServiceHistoriesController(Context, Validator);
 
         var view = Assert.IsType<ViewResult>(await controller.Index(null, "staffs/001", null, null, null));
-        Assert.Equal(["servicehistories/001"], Assert.IsAssignableFrom<IEnumerable<ServiceHistory>>(view.Model).Select(h => h.Id));
+        var staffMai = Assert.IsAssignableFrom<IEnumerable<ServiceHistory>>(view.Model).ToList();
+        Assert.Contains("servicehistories/001", staffMai.Select(h => h.Id));
+        Assert.All(staffMai, h => Assert.Equal("staffs/001", h.StaffId));
 
         view = Assert.IsType<ViewResult>(await controller.Index("customers/002", null, null, new DateTime(2026, 3, 1), new DateTime(2026, 3, 31)));
-        Assert.Equal(["servicehistories/002"], Assert.IsAssignableFrom<IEnumerable<ServiceHistory>>(view.Model).Select(h => h.Id));
+        var march = Assert.IsAssignableFrom<IEnumerable<ServiceHistory>>(view.Model).ToList();
+        Assert.Contains("servicehistories/002", march.Select(h => h.Id));
+        Assert.All(march, h =>
+        {
+            Assert.Equal("customers/002", h.CustomerId);
+            Assert.True(h.ServiceDate >= new DateTime(2026, 3, 1) && h.ServiceDate < new DateTime(2026, 4, 1));
+        });
     }
 }
 

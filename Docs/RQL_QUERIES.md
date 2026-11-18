@@ -12,7 +12,7 @@ Tài liệu này cung cấp danh sách đầy đủ 10 câu truy vấn chuẩn h
 ```rql
 from Customers
 ```
-- **Kết quả thực tế:** Trả về 2 bản ghi (`customers/001`, `customers/002`) với đầy đủ trường dữ liệu và thông tin địa chỉ con.
+- **Kết quả thực tế:** Trả về toàn bộ hồ sơ khách hàng trong bộ dữ liệu mẫu (70 document, gồm `customers/001`, `customers/002` và các hồ sơ sinh thêm), mỗi hồ sơ có đối tượng địa chỉ nhúng.
 
 ---
 
@@ -43,7 +43,7 @@ from Appointments where CustomerId = 'customers/001'
 ```rql
 from Appointments where Status = 'Completed'
 ```
-- **Kết quả thực tế:** Trả về document `appointments/001`.
+- **Kết quả thực tế:** Trả về các lịch hẹn có trạng thái `Completed` trong bộ dữ liệu mẫu (gồm `appointments/001` và nhiều lịch đã hoàn thành khác).
 
 ---
 
@@ -83,7 +83,7 @@ from ServiceHistories where StaffId = 'staffs/001'
 ```rql
 from Feedbacks where Rating >= 4
 ```
-- **Kết quả thực tế:** Trả về document `feedbacks/001` (Rating = 5).
+- **Kết quả thực tế:** Trả về các phản hồi có điểm từ 4 đến 5, gồm `feedbacks/001` (Rating = 5) và nhiều đánh giá tốt khác trong bộ mẫu.
 
 ---
 
@@ -112,27 +112,7 @@ select {
     Note: a.Note
 }
 ```
-- **Kết quả thực tế (JSON):**
-```json
-[
-  {
-    "AppointmentId": "appointments/001",
-    "CustomerName": "Nguyễn Văn An",
-    "CustomerPhone": "0901234567",
-    "AppointmentDate": "2026-02-01T09:30:00.0000000Z",
-    "Status": "Completed",
-    "Note": "Khách hàng yêu cầu kiểm tra kỹ quạt tản nhiệt do phát ra tiếng ồn khi chạy tải nặng"
-  },
-  {
-    "AppointmentId": "appointments/002",
-    "CustomerName": "Lê Thị Bích Ngọc",
-    "CustomerPhone": "0987654321",
-    "AppointmentDate": "2026-02-05T14:00:00.0000000Z",
-    "Status": "Confirmed",
-    "Note": "Khách báo máy tính khởi động không lên nguồn"
-  }
-]
-```
+- **Kết quả thực tế:** Trả về một bản ghi cho mỗi lịch hẹn, đã nạp sẵn họ tên và số điện thoại khách hàng. Bộ mẫu có 220 lịch hẹn; trong đó vẫn có `appointments/001` (Nguyễn Văn An) và `appointments/002` (Lê Thị Bích Ngọc).
 
 ---
 
