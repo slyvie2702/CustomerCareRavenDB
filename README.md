@@ -58,7 +58,7 @@ Cơ sở dữ liệu **`CustomerCareDB`** gồm sáu collection. Địa chỉ kh
 | `ServiceHistories` | `servicehistories/{id}` | Tham chiếu `AppointmentId`, `CustomerId`, `ServiceId`, `StaffId`; ngày thực hiện `ServiceDate`, mô tả, kết quả, ghi chú |
 | `Feedbacks` | `feedbacks/{id}` | Tham chiếu `CustomerId`, `AppointmentId`; điểm `Rating` (1–5), nhận xét |
 
-Dữ liệu mẫu khi khởi động gồm `customers/001`, `customers/002`, `staffs/001`, `staffs/002`, `services/001`, `services/002`, `appointments/001`, `appointments/002`, `servicehistories/001` và `feedbacks/001`. Khách hàng tạo mới để RavenDB tự cấp id (dạng `customers/1-A`).
+Dữ liệu mẫu khi khởi động gồm 70 khách hàng, 10 nhân viên, 10 dịch vụ và 220 lịch hẹn (trải khoảng 12 tháng trước và 2 tháng sau ngày 18/11/2026, Asia/Saigon). Lịch đã hoàn thành có lịch sử chăm sóc; phần lớn lịch đó có phản hồi với điểm số đa dạng. Các bản ghi gốc dùng cho demo RQL được giữ nguyên: `customers/001`, `appointments/001`, `servicehistories/001`, `feedbacks/001`. Seeder idempotent và sinh dữ liệu bằng bộ sinh ngẫu nhiên cố định (seed 20261118). Khách hàng tạo mới để RavenDB tự cấp id (dạng `customers/1-A`).
 
 **Ràng buộc toàn vẹn** (kiểm tra trước khi ghi):
 
@@ -172,7 +172,7 @@ RavenDB phải đang chạy tại `http://127.0.0.1:8080` (đổi địa chỉ b
 dotnet test CustomerCareRavenDB.sln
 ```
 
-Bộ kiểm thử hiện có 91 ca (model, kết nối, chứng chỉ, giới tính, toàn vẹn tham chiếu, id khác collection, seeder, static index). GitHub Actions cũng chạy bộ test này và một bước smoke test image Docker khi có push hoặc pull request vào nhánh `main`.
+Bộ kiểm thử hiện có 84 ca (model, kết nối, chứng chỉ, giới tính, toàn vẹn tham chiếu, id khác collection, seeder, static index). GitHub Actions cũng chạy bộ test này và một bước smoke test image Docker khi có push hoặc pull request vào nhánh `main`.
 
 ## 8. Cấu hình
 

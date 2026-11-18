@@ -105,6 +105,69 @@ public class IntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Seeder_LoadsExpectedCounts_AndKeepsReferencesConsistent()
+    {
+        Assert.True(await _seeder.SeedAsync());
+        var expected = DatabaseSeeder.BuildSeedData();
+
+        using var session = _context.OpenAsyncSession();
+        Assert.Equal(SeedCatalog.CustomerCount, await session.Query<Customer>().CountAsync());
+        Assert.Equal(SeedCatalog.StaffCount, await session.Query<Staff>().CountAsync());
+        Assert.Equal(SeedCatalog.ServiceCount, await session.Query<Service>().CountAsync());
+        Assert.Equal(SeedCatalog.AppointmentCount, await session.Query<Appointment>().CountAsync());
+        Assert.Equal(expected.Histories.Count, await session.Query<ServiceHistory>().CountAsync());
+        Assert.Equal(expected.Feedbacks.Count, await session.Query<Feedback>().CountAsync());
+
+        Assert.InRange(expected.Histories.Count, 80, 160);
+        Assert.InRange(expected.Feedbacks.Count, 50, 140);
+
+        var customers = (await session.Query<Customer>().Take(500).ToListAsync()).ToDictionary(c => c.Id);
+        var staffs = (await session.Query<Staff>().Take(100).ToListAsync()).Select(s => s.Id).ToHashSet();
+        var services = (await session.Query<Service>().Take(100).ToListAsync()).Select(s => s.Id).ToHashSet();
+        var appointments = (await session.Query<Appointment>().Take(500).ToListAsync()).ToDictionary(a => a.Id);
+
+        Assert.Contains(customers.Values, c => c.Gender == CustomerGender.Male);
+        Assert.Contains(customers.Values, c => c.Gender == CustomerGender.Female);
+        Assert.Contains(customers.Values, c => c.Gender == CustomerGender.Other);
+        Assert.Contains(appointments.Values, a => a.Status == "Pending");
+        Assert.Contains(appointments.Values, a => a.Status == "Confirmed");
+        Assert.Contains(appointments.Values, a => a.Status == "Completed");
+        Assert.Contains(appointments.Values, a => a.Status == "Cancelled");
+        Assert.True(appointments.Values.Count(a => a.AppointmentDate > SeedCatalog.AsOfUtc) >= 10);
+        Assert.True(appointments.Values.Count(a => a.AppointmentDate < SeedCatalog.AsOfUtc.AddMonths(-6)) >= 10);
+
+        foreach (var appointment in appointments.Values)
+        {
+            Assert.True(customers.ContainsKey(appointment.CustomerId), appointment.Id);
+            Assert.Contains(appointment.ServiceId, services);
+            Assert.Contains(appointment.Status, new[] { "Pending", "Confirmed", "Completed", "Cancelled" });
+        }
+
+        var histories = await session.Query<ServiceHistory>().Take(500).ToListAsync();
+        Assert.Equal(appointments.Values.Count(a => a.Status == "Completed"), histories.Count);
+        foreach (var history in histories)
+        {
+            var appointment = appointments[history.AppointmentId];
+            Assert.Equal("Completed", appointment.Status);
+            Assert.Equal(appointment.CustomerId, history.CustomerId);
+            Assert.Equal(appointment.ServiceId, history.ServiceId);
+            Assert.Contains(history.StaffId, staffs);
+        }
+
+        var feedbacks = await session.Query<Feedback>().Take(500).ToListAsync();
+        foreach (var feedback in feedbacks)
+        {
+            var appointment = appointments[feedback.AppointmentId];
+            Assert.Equal(appointment.CustomerId, feedback.CustomerId);
+            Assert.InRange(feedback.Rating, 1, 5);
+        }
+
+        Assert.Equal("Nguyễn Văn An", customers["customers/001"].FullName);
+        Assert.Single(appointments.Values, a => a.CustomerId == "customers/001");
+        Assert.Single(histories, h => h.CustomerId == "customers/001");
+    }
+
+    [Fact]
     public async Task StaticIndex_ServiceHistories_ByCustomerAndDate_CanBeQueried()
     {
         // Nạp dữ liệu mẫu
