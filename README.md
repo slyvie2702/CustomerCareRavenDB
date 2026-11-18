@@ -2,7 +2,11 @@
 
 > Đồ án môn **Cơ sở dữ liệu NoSQL**.
 >
-> **Nhóm thực hiện:** Nguyễn Huy Thanh (nhóm trưởng) cùng các thành viên trong nhóm.
+> **Nhóm thực hiện:** Nhóm 3
+    1. 2001230885 - Nguyễn Huy Thanh
+	2. 2001223984 - Trần Anh Quốc
+	3. 2001230167 - Nguyễn Phạm Huỳnh Đạt
+
 
 ## 1. Giới thiệu đề tài
 
