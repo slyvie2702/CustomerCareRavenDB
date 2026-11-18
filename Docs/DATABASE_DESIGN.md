@@ -209,13 +209,15 @@ Khi ứng dụng thực thi truy vấn động với mệnh đề `where`, Raven
 
 ### 6.2. Static Index: `ServiceHistories/ByCustomerAndDate`
 Được định nghĩa tường minh bằng C# (`AbstractIndexCreationTask<ServiceHistory>`) và tự động triển khai khi ứng dụng khởi động.
-- **Mục đích:** Tối ưu hóa việc lọc lịch sử chăm sóc theo khách hàng và sắp xếp/phạm vi theo thời gian thực hiện.
+- **Mục đích:** Tối ưu hóa việc lọc lịch sử chăm sóc theo khách hàng, nhân viên, dịch vụ và sắp xếp/phạm vi theo thời gian thực hiện.
 - **RQL Map Expression:**
 ```javascript
 from history in docs.ServiceHistories
 select new
 {
     history.CustomerId,
-    history.ServiceDate
+    history.ServiceDate,
+    history.StaffId,
+    history.ServiceId
 }
 ```

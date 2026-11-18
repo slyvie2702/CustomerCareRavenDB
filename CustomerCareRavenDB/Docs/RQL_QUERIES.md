@@ -146,14 +146,16 @@ Khi thực hiện các truy vấn lọc động không qua Static Index, RavenDB
 - `Auto/ServiceHistories/ByAppointmentIdAndCustomerIdAndServiceDateAndStaffId`
 
 ### 2.2. Static Index: `ServiceHistories/ByCustomerAndDate`
-- **Mục tiêu:** Cố định hóa chỉ mục cho màn hình tra cứu lịch sử của khách hàng.
+- **Mục tiêu:** Cố định hóa chỉ mục cho màn hình tra cứu lịch sử chăm sóc: lọc theo khách hàng, nhân viên, dịch vụ và sắp xếp theo ngày thực hiện.
 - **Map Definition (RQL/JavaScript):**
 ```javascript
 from history in docs.ServiceHistories
 select new
 {
     history.CustomerId,
-    history.ServiceDate
+    history.ServiceDate,
+    history.StaffId,
+    history.ServiceId
 }
 ```
 - **Truy vấn RQL sử dụng Static Index:**
