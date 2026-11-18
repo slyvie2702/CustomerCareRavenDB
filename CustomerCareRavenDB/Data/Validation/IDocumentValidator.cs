@@ -21,8 +21,8 @@ public class ValidationResult
 }
 
 /// <summary>
-/// Giao diện kiểm tra ràng buộc toàn vẹn dữ liệu tài liệu (Document Integrity & Business Rules).
-/// Phục vụ cho các module của Quốc (Appointments) và Đạt (ServiceHistories, Feedbacks).
+/// Giao diện kiểm tra ràng buộc toàn vẹn dữ liệu tài liệu (Document Integrity & Business Rules)
+/// cho lịch hẹn, lịch sử chăm sóc và phản hồi.
 /// </summary>
 public interface IDocumentValidator
 {

@@ -99,7 +99,6 @@ Cú pháp `load` cho phép nạp document được tham chiếu trong cùng mộ
 ```text
 CustomerCareRavenDB/                       # Thư mục gốc repository
 ├── CustomerCareRavenDB.sln                # Solution dùng để build và test
-├── CustomerCareRavenDB.slnx
 ├── CustomerCareRavenDB/                   # Ứng dụng web ASP.NET Core MVC
 │   ├── Controllers/                       # Home, Customers, Appointments,
 │   │                                      # Services, ServiceHistories, Feedbacks
@@ -109,7 +108,6 @@ CustomerCareRavenDB/                       # Thư mục gốc repository
 │   ├── Models/                            # Document models và CustomerGender
 │   ├── ViewModels/                        # Form dịch vụ, lịch sử, phản hồi
 │   ├── Views/
-│   ├── Docs/                              # Bản sao tài liệu kỹ thuật
 │   ├── appsettings.json
 │   └── Program.cs                         # DI, tạo database, index, dữ liệu mẫu, /healthz
 ├── CustomerCareRavenDB.Tests/             # Kiểm thử xUnit
@@ -131,7 +129,7 @@ Cần **.NET 10 SDK**, **Git**, và một máy chủ RavenDB 7.2 trên cổng 80
 ### 6.1. Clone mã nguồn
 
 ```bash
-git clone https://github.com/ahuhu789/CustomerCareRavenDB.git
+git clone https://github.com/slyvie2702/CustomerCareRavenDB.git
 cd CustomerCareRavenDB
 ```
 
@@ -168,7 +166,7 @@ Muốn trở lại bộ dữ liệu sạch giữa các lần demo: trong Studio,
 
 ## 7. Chạy test
 
-RavenDB phải đang chạy tại `http://127.0.0.1:8080` (đổi địa chỉ bằng biến môi trường `RAVEN_TEST_URL` nếu cần). Đứng ở thư mục gốc của repository, chỉ định file solution vì repo có cả `.sln` và `.slnx`:
+RavenDB phải đang chạy tại `http://127.0.0.1:8080` (đổi địa chỉ bằng biến môi trường `RAVEN_TEST_URL` nếu cần). Đứng ở thư mục gốc của repository:
 
 ```bash
 dotnet test CustomerCareRavenDB.sln
