@@ -1,320 +1,220 @@
-# Quản Lý Hồ Sơ Khách Hàng và Lịch Sử Chăm Sóc Khách Hàng (RavenDB)
+# Quản lý hồ sơ khách hàng và lịch sử chăm sóc khách hàng (RavenDB)
 
-> **Dự án môn học Cơ sở dữ liệu NoSQL**  
-> **Đề tài:** Quản lý hồ sơ khách hàng và lịch sử chăm sóc khách hàng của trung tâm dịch vụ bằng RavenDB Studio.
+> Đồ án môn **Cơ sở dữ liệu NoSQL**.
+>
+> **Nhóm thực hiện:** Nguyễn Huy Thanh (nhóm trưởng) cùng các thành viên trong nhóm.
 
----
+## 1. Giới thiệu đề tài
 
-## A. Tổng Quan Dự Án (Project Overview)
+Đây là ứng dụng web giúp trung tâm dịch vụ quản lý hồ sơ khách hàng và quá trình chăm sóc khách hàng trên RavenDB — một hệ quản trị cơ sở dữ liệu hướng tài liệu (document database). Ứng dụng theo dõi khách hàng, lịch hẹn, danh mục dịch vụ, nhật ký thực hiện dịch vụ và phản hồi đánh giá.
 
-- **Tên dự án:** CustomerCareRavenDB
-- **Mục tiêu:** Xây dựng hệ thống phần mềm quản lý hồ sơ khách hàng, danh mục gói dịch vụ, phân công nhân viên kỹ thuật, theo dõi lịch hẹn, ghi nhận lịch sử chăm sóc/sửa chữa thực tế và tiếp nhận đánh giá phản hồi từ khách hàng.
-- **Công nghệ cốt lõi:**
-  - **Database Engine:** RavenDB Document Database (NoSQL) v7.2.6 & RavenDB Studio.
-  - **Framework & Ngôn ngữ:** .NET 10.0 / C# (ASP.NET Core MVC).
-  - **Giao diện:** Razor Views + Bootstrap 5 + Bootstrap Icons.
-  - **Data Access:** `RavenDB.Client` v7.2.6 (Singleton `IDocumentStore`, Async Sessions, Unit of Work).
-  - **Truy vấn:** Raven Query Language (RQL) & LINQ.
-  - **Kiểm thử tự động:** xUnit v2.9.3.
-  - **TUYỆT ĐỐI KHÔNG SỬ DỤNG:** Entity Framework Core, SQL Server, SQLite, MongoDB. RavenDB là cơ sở dữ liệu duy nhất của toàn bộ hệ thống.
-- **Kiến trúc hệ thống:**
-  Hệ thống áp dụng mô hình kiến trúc phân lớp hướng tài liệu (Document-Driven Architecture):
-  - **Presentation Layer:** ASP.NET Core MVC Controllers & Bootstrap Views.
-  - **Data Layer:** `RavenDbContext` quản lý kết nối, phiên làm việc bất đồng bộ, nạp cấu hình từ `appsettings.json`.
-  - **Validation Layer:** `DocumentValidator` đảm bảo toàn vẹn tham chiếu giữa các Document trước khi ghi.
-  - **Persistence & Indexing:** RavenDB Server quản lý 6 Primary Collections, Auto-Indexes và Static Index `ServiceHistories/ByCustomerAndDate`.
+Đề tài không chỉ làm các chức năng nghiệp vụ, mà còn minh họa cách làm việc với mô hình NoSQL: collection, quy ước document id, tài liệu nhúng, tham chiếu giữa các document, static index và truy vấn bằng Raven Query Language (RQL). Toàn bộ dữ liệu được lưu trên RavenDB; dự án không dùng Entity Framework, SQL Server, SQLite hay MongoDB.
 
----
+## 2. Công nghệ
 
-## B. Phân Công Trách Nhiệm Nhóm (Team Responsibilities)
+- **.NET 10** / C#, **ASP.NET Core MVC** với Razor Views
+- **RavenDB 7.2** (máy chủ 7.2, thư viện `RavenDB.Client` 7.2.6) và RavenDB Studio khi chạy local
+- Truy vấn bằng **LINQ** trên `IAsyncDocumentSession` và **RQL**
+- Giao diện Bootstrap 5, Bootstrap Icons
+- Kiểm thử tự động bằng **xUnit** 2.9.3
 
-| Thành viên | Phụ trách | Trạng thái hiện tại |
+Kiến trúc gọn: Controllers/Views gọi Data Layer `IRavenDbContext` (một `DocumentStore` dùng chung suốt vòng đời ứng dụng, mỗi request mở một Async Session). Trước khi ghi lịch hẹn, lịch sử chăm sóc và phản hồi, `DocumentValidator` kiểm tra tài liệu được tham chiếu còn tồn tại và các ràng buộc nhất quán giữa các document.
+
+## 3. Chức năng
+
+Ứng dụng có năm phân hệ nghiệp vụ, cộng với trang chủ và trang chạy thử RQL.
+
+**Trang chủ** hiển thị trạng thái kết nối RavenDB, số lượng document trong từng collection và một vài bản ghi gần nhất.
+
+**Khách hàng (`Customers`).** Thêm, xem, sửa, xóa hồ sơ. Tìm theo họ tên, số điện thoại hoặc email (full-text `Search` của RavenDB). Lọc theo trạng thái. Giới tính được lưu `Male` / `Female` / `Other` và hiển thị Nam / Nữ / Khác; dữ liệu cũ ghi bằng tiếng Việt vẫn được nhận diện khi đọc hoặc sửa. Có trang xác nhận trước khi xóa.
+
+**Lịch hẹn (`Appointments`).** Thêm, xem, sửa, hủy lịch. Lọc theo trạng thái (`Pending`, `Confirmed`, `Completed`, `Cancelled`). Tìm theo tên hoặc số điện thoại khách hàng. Trước khi lưu, hệ thống kiểm tra khách hàng và dịch vụ được chọn còn tồn tại. Hủy lịch hẹn là đổi trạng thái thành `Cancelled`, không xóa document.
+
+**Dịch vụ (`Services`).** Thêm, xem, sửa, xóa danh mục gói dịch vụ. Tìm theo tên hoặc loại dịch vụ. Form có kiểm tra dữ liệu (tên, loại bắt buộc, giá không âm). Không cho xóa dịch vụ đang được lịch hẹn hoặc lịch sử chăm sóc sử dụng.
+
+**Lịch sử chăm sóc (`ServiceHistories`).** Ghi nhận việc thực hiện dịch vụ thực tế: thêm, xem, sửa, xóa. Lọc theo khách hàng, nhân viên, dịch vụ và khoảng ngày; các bộ lọc này chạy trên static index `ServiceHistories/ByCustomerAndDate`. Khách hàng và dịch vụ được lấy từ lịch hẹn đã chọn. Trước khi lưu, hệ thống kiểm tra lịch hẹn, nhân viên còn tồn tại, và `CustomerId` / `ServiceId` phải khớp với lịch hẹn.
+
+**Phản hồi (`Feedbacks`).** Thêm, xem, sửa, xóa đánh giá của khách hàng. Lọc theo khách hàng và điểm. Điểm từ 1 đến 5 sao. Phản hồi gắn trực tiếp với lịch hẹn; `CustomerId` phải là đúng người đặt lịch đó.
+
+Ngoài ra:
+
+- Form các phân hệ dịch vụ, lịch sử chăm sóc và phản hồi dùng Data Annotations; các thao tác ghi có chống giả mạo form (`ValidateAntiForgeryToken`).
+- Khi mở chi tiết, sửa hoặc xóa, nếu id thuộc collection khác (ví dụ đưa id lịch hẹn vào trang khách hàng) thì trả về 404.
+- Trang `/Home/RqlQueries` cung cấp các câu RQL mẫu để chạy thử ngay trong ứng dụng.
+- Endpoint `/healthz` dùng cho kiểm tra sức khỏe khi triển khai.
+
+Danh sách nhân viên (`Staffs`) không có trang quản lý riêng. Dữ liệu nhân viên được nạp sẵn cùng dữ liệu mẫu và được chọn khi lập lịch sử chăm sóc.
+
+## 4. Mô hình dữ liệu NoSQL
+
+Cơ sở dữ liệu **`CustomerCareDB`** gồm sáu collection. Địa chỉ khách hàng là **embedded document** nằm trong document khách hàng, không tách collection riêng. Các liên kết còn lại lưu dưới dạng chuỗi id tham chiếu (ví dụ `"customers/001"`).
+
+| Collection | Quy ước id | Nội dung chính |
 |---|---|---|
-| **Thanh** | Database architecture, RavenDB Studio, Document Models, RavenDB integration, Data Layer, RQL, Indexes, integration testing and technical documentation | **ĐÃ HOÀN THÀNH 100% NỀN TẢNG** |
-| **Quốc** | Customers and Appointments business modules (Controllers & Views) | **Đã merge vào `main` (PR #2)** |
-| **Đạt** | Services, ServiceHistories and Feedbacks business modules (Controllers & Views) | **Đã merge vào `main` (PR #3)** |
+| `Customers` | `customers/{id}` | Họ tên, điện thoại, email, địa chỉ nhúng, ngày sinh, giới tính, trạng thái |
+| `Staffs` | `staffs/{id}` | Nhân viên kỹ thuật: họ tên, chức vụ, điện thoại, email |
+| `Services` | `services/{id}` | Tên, mô tả, giá, loại dịch vụ |
+| `Appointments` | `appointments/{id}` | Tham chiếu `CustomerId`, `ServiceId`; ngày hẹn, trạng thái, ghi chú `Note` |
+| `ServiceHistories` | `servicehistories/{id}` | Tham chiếu `AppointmentId`, `CustomerId`, `ServiceId`, `StaffId`; ngày thực hiện `ServiceDate`, mô tả, kết quả, ghi chú |
+| `Feedbacks` | `feedbacks/{id}` | Tham chiếu `CustomerId`, `AppointmentId`; điểm `Rating` (1–5), nhận xét |
 
----
+Dữ liệu mẫu khi khởi động gồm `customers/001`, `customers/002`, `staffs/001`, `staffs/002`, `services/001`, `services/002`, `appointments/001`, `appointments/002`, `servicehistories/001` và `feedbacks/001`. Khách hàng tạo mới để RavenDB tự cấp id (dạng `customers/1-A`).
 
-## C. Tiến Độ Thực Hiện Hiện Tại (Current Implementation Progress)
+**Ràng buộc toàn vẹn** (kiểm tra trước khi ghi):
 
-### 1. Đã hoàn thành (Completed - Đã kiểm chứng thực tế)
-- [x] Khảo sát môi trường và xác thực kết nối RavenDB Server 7.2.6 (`http://127.0.0.1:8080`).
-- [x] Xây dựng cấu trúc dự án ASP.NET Core MVC và Solution chuẩn .NET 10.
-- [x] Cài đặt 7 C# Document Models theo đúng lược đồ thiết kế CSDL (bao gồm Embedded Document `CustomerAddress`).
-- [x] Triển khai Data Layer `IRavenDbContext` / `RavenDbContext` theo mô hình Singleton vòng đời và Unit of Work cho Async Sessions.
-- [x] Triển khai `IDocumentValidator` / `DocumentValidator` kiểm tra ràng buộc toàn vẹn giữa Appointment, ServiceHistory và Feedback.
-- [x] Triển khai `DatabaseSeeder` tự động kiểm tra, tạo database `CustomerCareDB` và nạp kịch bản mẫu trọn vẹn (Workflow từ `customers/001` đến `feedbacks/001`), hỗ trợ tính Idempotent.
-- [x] Triển khai Static Index `ServiceHistories/ByCustomerAndDate` kế thừa `AbstractIndexCreationTask`.
-- [x] Kiểm thử và xác thực 10/10 câu truy vấn Raven Query Language (RQL) kèm Auto-Index và cú pháp `load`.
-- [x] Xây dựng bộ kiểm thử tự động xUnit với **18/18 test cases ĐẠT 100%**.
-- [x] Xây dựng giao diện Dashboard trung tâm (`/Home/Index`) và trang kiểm thử RQL trực tiếp (`/Home/RqlQueries`).
-- [x] Soạn thảo toàn bộ tài liệu kỹ thuật chi tiết trong thư mục `Docs/`.
-- [x] Giao diện CRUD nghiệp vụ Customers & Appointments (Quốc — PR #2, đã merge vào `main`).
-- [x] Giao diện CRUD nghiệp vụ Services, ServiceHistories & Feedbacks (Đạt — PR #3, đã merge vào `main`).
+- Lịch hẹn: `CustomerId` và `ServiceId` phải trỏ tới document đang tồn tại đúng collection.
+- Lịch sử chăm sóc: lịch hẹn và nhân viên phải tồn tại; `CustomerId` / `ServiceId` phải trùng với lịch hẹn tương ứng.
+- Phản hồi: lịch hẹn phải tồn tại; `CustomerId` phải trùng người đặt lịch; `Rating` trong khoảng 1–5.
 
-### 2. Đang thực hiện (In progress)
-- [*] Sửa các lỗi phát hiện khi rà soát (nhánh `fix/bugs-from-review`).
+**Static index `ServiceHistories/ByCustomerAndDate`** được định nghĩa bằng C# (`AbstractIndexCreationTask`) và tự triển khai khi ứng dụng khởi động. Index map các trường `CustomerId`, `ServiceDate`, `StaffId`, `ServiceId` để trang lịch sử chăm sóc lọc và sắp xếp trên index này, không quét cả collection. Các truy vấn khác (ví dụ tìm khách theo số điện thoại) để RavenDB tự tạo auto-index khi cần.
 
-### 3. Chưa bắt đầu (Not started)
-- [ ] Phân quyền / đăng nhập người dùng (xem mục H).
-- [ ] Triển khai (deploy) lên môi trường online.
+Ví dụ RQL:
 
-### 4. Tắc nghẽn (Blocked)
-- Không có bất kỳ tắc nghẽn hạ tầng nào. Hạ tầng database và Data Layer vận hành ổn định.
+```rql
+from Customers where Phone = '0901234567'
+```
 
----
+```rql
+from Appointments as a
+load a.CustomerId as c
+select {
+    AppointmentId: id(a),
+    CustomerName: c.FullName,
+    CustomerPhone: c.Phone,
+    AppointmentDate: a.AppointmentDate,
+    Status: a.Status
+}
+```
 
-## D. Kiến Trúc Cơ Sở Dữ Liệu (Database Architecture)
+```rql
+from index 'ServiceHistories/ByCustomerAndDate'
+where CustomerId = 'customers/001'
+order by ServiceDate desc
+```
 
-Cơ sở dữ liệu: **`CustomerCareDB`** gồm 6 Primary Collections:
+Cú pháp `load` cho phép nạp document được tham chiếu trong cùng một truy vấn, không cần join kiểu quan hệ. Có thể chạy các câu này trong RavenDB Studio (`Indexes` → `Query`) hoặc trên trang `/Home/RqlQueries`. Danh sách đầy đủ các câu mẫu nằm ở [`Docs/RQL_QUERIES.md`](Docs/RQL_QUERIES.md).
 
-1. **`Customers`**: Quản lý hồ sơ khách hàng.
-   - Trường: `Id`, `FullName`, `Phone`, `Email`, `Address`, `Birthday`, `Gender`, `CreatedAt`, `Status`.
-   - **`CustomerAddress` (Embedded Document):** Gồm `Street`, `Ward`, `District`, `City`. Địa chỉ được nhúng trực tiếp dưới dạng JSON con trong document của khách hàng để tối ưu hóa hiệu năng đọc và đảm bảo tính nguyên tử, **không tách thành collection riêng**.
-2. **`Staffs`**: Quản lý hồ sơ nhân viên kỹ thuật.
-   - Trường: `Id`, `FullName`, `Position`, `Phone`, `Email`, `CreatedAt`.
-3. **`Services`**: Quản lý danh mục gói dịch vụ.
-   - Trường: `Id`, `Name`, `Description`, `Price` (decimal), `Category`, `CreatedAt`.
-4. **`Appointments`**: Quản lý lịch hẹn dịch vụ của khách.
-   - Trường: `Id`, `CustomerId`, `ServiceId`, `AppointmentDate`, `Status`, `Note` (Dùng `Note`, không dùng `Notes`), `CreatedAt`.
-   - Liên kết: `CustomerId` -> `Customers.Id`, `ServiceId` -> `Services.Id`.
-5. **`ServiceHistories`**: Nhật ký thực hiện dịch vụ thực tế.
-   - Trường: `Id`, `AppointmentId`, `CustomerId`, `ServiceId`, `StaffId`, `ServiceDate` (Dùng `ServiceDate`, không dùng `CompletedAt`), `Description`, `Result`, `Note`, `CreatedAt`.
-   - Liên kết: `AppointmentId` -> `Appointments.Id`, `CustomerId` -> `Customers.Id`, `ServiceId` -> `Services.Id`, `StaffId` -> `Staffs.Id`.
-6. **`Feedbacks`**: Đánh giá và phản hồi của khách hàng.
-   - Trường: `Id`, `CustomerId`, `AppointmentId` (Liên kết trực tiếp tới `Appointments.Id`, không dùng `ServiceHistoryId`), `Rating` (1 <= Rating <= 5), `Comment`, `CreatedAt`.
-
----
-
-## E. Cấu Trúc Dự Án Thực Tế (Project Structure)
+## 5. Cấu trúc thư mục
 
 ```text
 CustomerCareRavenDB/                       # Thư mục gốc repository
-│
-├── CustomerCareRavenDB.sln                # Solution dùng để build/test (khuyến nghị)
-├── CustomerCareRavenDB.slnx               # Bản solution định dạng mới (cùng 2 project, cho VS 2026)
-│
-├── CustomerCareRavenDB/
-│   ├── Controllers/
-│   │   ├── HomeController.cs              # Dashboard thống kê và kết nối RavenDB
-│   │   ├── DiagnosticController.cs        # Chẩn đoán kết nối và thực thi RQL trực tiếp
-│   │   ├── CustomersController.cs         # CRUD khách hàng (Quốc)
-│   │   ├── AppointmentsController.cs      # CRUD lịch hẹn (Quốc)
-│   │   ├── ServicesController.cs          # CRUD dịch vụ (Đạt)
-│   │   ├── ServiceHistoriesController.cs  # Lịch sử chăm sóc (Đạt)
-│   │   └── FeedbacksController.cs         # Phản hồi khách hàng (Đạt)
-│   │
-│   ├── Data/
-│   │   ├── RavenSettings.cs               # Model cấu hình kết nối từ appsettings.json
-│   │   ├── IRavenDbContext.cs             # Giao diện Data Layer
-│   │   ├── RavenDbContext.cs              # Singleton DocumentStore và quản lý Session
-│   │   ├── DatabaseSeeder.cs              # Khởi tạo database & nạp dữ liệu mẫu
-│   │   └── Validation/
-│   │       ├── IDocumentValidator.cs      # Giao diện kiểm tra toàn vẹn tài liệu
-│   │       └── DocumentValidator.cs       # Logic kiểm tra quan hệ và ràng buộc
-│   │
-│   ├── Indexes/
-│   │   └── ServiceHistories_ByCustomerAndDate.cs  # Static Index của RavenDB
-│   │
-│   ├── Models/
-│   │   ├── CustomerAddress.cs             # Embedded Document
-│   │   ├── Customer.cs
-│   │   ├── Staff.cs
-│   │   ├── Service.cs
-│   │   ├── Appointment.cs
-│   │   ├── ServiceHistory.cs
-│   │   ├── Feedback.cs
-│   │   └── DashboardViewModel.cs
-│   │
+├── CustomerCareRavenDB.sln                # Solution dùng để build và test
+├── CustomerCareRavenDB.slnx
+├── CustomerCareRavenDB/                   # Ứng dụng web ASP.NET Core MVC
+│   ├── Controllers/                       # Home, Customers, Appointments,
+│   │                                      # Services, ServiceHistories, Feedbacks
+│   ├── Data/                              # RavenDbContext, Seeder, Validator,
+│   │                                      # ServiceHistoryQueries, SessionExtensions
+│   ├── Indexes/                           # Static index ServiceHistories/ByCustomerAndDate
+│   ├── Models/                            # Document models và CustomerGender
+│   ├── ViewModels/                        # Form dịch vụ, lịch sử, phản hồi
 │   ├── Views/
-│   │   ├── Home/
-│   │   │   ├── Index.cshtml               # Màn hình Dashboard trực quan
-│   │   │   └── RqlQueries.cshtml          # Trình thử nghiệm 10 câu truy vấn RQL
-│   │   └── Shared/
-│   │       └── _Layout.cshtml             # Giao diện dùng chung Bootstrap 5
-│   │
-│   ├── Docs/                              # Tài liệu kỹ thuật dự án
-│   │   ├── DATABASE_DESIGN.md
-│   │   ├── RQL_QUERIES.md
-│   │   ├── RAVENDB_STUDIO_GUIDE.md
-│   │   ├── INTEGRATION_GUIDE.md
-│   │   ├── TEST_REPORT.md
-│   │   └── THANH_PROGRESS_REPORT.md
-│   │
-│   ├── appsettings.json                   # Cấu hình kết nối RavenDB
-│   ├── Program.cs                         # Khởi tạo DI, tự động nạp seeder & index
-│   └── CustomerCareRavenDB.csproj
-│
-├── CustomerCareRavenDB.Tests/             # Dự án kiểm thử tự động độc lập
-│   ├── ModelTests.cs                      # Kiểm tra tính tuần tự hóa & embedded address
-│   ├── RavenConnectionTests.cs            # Kiểm tra nạp cấu hình & ping server
-│   ├── ValidationTests.cs                 # Kiểm tra logic nghiệp vụ & ràng buộc dữ liệu
-│   ├── IntegrationTests.cs                # Kiểm tra tích hợp database, seeder & index
-│   └── CustomerCareRavenDB.Tests.csproj
-│
-├── Docs/                                  # Bản sao tài liệu cấp gốc phục vụ tra cứu
-├── README.md                              # Tài liệu trung tâm toàn nhóm
-├── .gitignore                             # Loại trừ bin, obj, test results và bí mật
-└── .env.example                           # Mẫu biến môi trường
+│   ├── Docs/                              # Bản sao tài liệu kỹ thuật
+│   ├── appsettings.json
+│   └── Program.cs                         # DI, tạo database, index, dữ liệu mẫu, /healthz
+├── CustomerCareRavenDB.Tests/             # Kiểm thử xUnit
+├── Docs/                                  # Thiết kế CSDL, RQL, hướng dẫn Studio
+├── docker/entrypoint.sh                   # Khởi động RavenDB rồi tới ứng dụng
+├── Dockerfile
+├── render.yaml
+├── .github/workflows/ci.yml
+├── .env.example
+└── README.md
 ```
 
----
+Thiết kế chi tiết các collection nằm ở [`Docs/DATABASE_DESIGN.md`](Docs/DATABASE_DESIGN.md). Cách xem document và index trên Studio nằm ở [`Docs/RAVENDB_STUDIO_GUIDE.md`](Docs/RAVENDB_STUDIO_GUIDE.md).
 
-## F. Hướng Dẫn Cài Đặt và Khởi Chạy (Installation Instructions)
+## 6. Chạy local
 
-Yêu cầu: **.NET SDK 10.0** và một RavenDB Server (7.x) chạy cục bộ trên cổng `8080`. Các lệnh dưới đây dùng được trên Windows (PowerShell), macOS và Linux.
+Cần **.NET 10 SDK**, **Git**, và một máy chủ RavenDB 7.2 trên cổng 8080. RavenDB có thể chạy bằng Docker hoặc bản cài Windows.
 
-### 1. Clone mã nguồn
-```powershell
+### 6.1. Clone mã nguồn
+
+```bash
 git clone https://github.com/ahuhu789/CustomerCareRavenDB.git
 cd CustomerCareRavenDB
 ```
 
-### 2. Khởi động RavenDB Server
-Khởi động RavenDB Server cục bộ trên cổng `8080`. Mở trình duyệt kiểm tra tại: `http://127.0.0.1:8080`.
+### 6.2. Chạy RavenDB bằng Docker
 
-Nếu có Docker, có thể chạy nhanh một server không bảo mật (chỉ dùng cho máy cá nhân):
-```powershell
-docker run -d --name ravendb -p 8080:8080 -e RAVEN_Setup_Mode=None -e RAVEN_License_Eula_Accepted=true -e RAVEN_Security_UnsecuredAccessAllowed=PrivateNetwork ravendb/ravendb:ubuntu-latest
+```bash
+docker run -d --name ravendb -p 8080:8080 -p 38888:38888 \
+  -e RAVEN_Setup_Mode=None \
+  -e RAVEN_License_Eula_Accepted=true \
+  -e RAVEN_Security_UnsecuredAccessAllowed=PublicNetwork \
+  ravendb/ravendb:7.2-latest
 ```
 
-Địa chỉ server / tên database / chứng chỉ có thể đổi trong `CustomerCareRavenDB/appsettings.json` (section `RavenSettings`) hoặc qua biến môi trường — xem `.env.example`.
+Mở [http://127.0.0.1:8080](http://127.0.0.1:8080) thấy RavenDB Studio là được. Những lần sau chỉ cần `docker start ravendb`.
 
-### 3. Khôi phục thư viện và Build
-Thư mục gốc có **hai** file solution (`.sln` và `.slnx`), nên phải chỉ rõ solution, nếu không `dotnet` báo lỗi `MSB1011`:
-```powershell
-dotnet restore CustomerCareRavenDB.sln
-dotnet build CustomerCareRavenDB.sln
+### 6.3. Chạy RavenDB trên Windows (không dùng Docker)
+
+Tải bản zip cho Windows tại [trang tải RavenDB](https://ravendb.net/download), giải nén, chạy `run.ps1`. Khi trình hướng dẫn hiện ra, chọn chế độ **Unsecure** và giữ cổng 8080.
+
+### 6.4. Chạy ứng dụng
+
+Từ thư mục gốc của repository:
+
+```bash
+cd CustomerCareRavenDB
+dotnet run --launch-profile http
 ```
 
-### 4. Chạy toàn bộ kiểm thử tự động
-Các bài test tích hợp cần RavenDB Server đang chạy tại `http://127.0.0.1:8080` (đổi bằng biến môi trường `RAVEN_TEST_URL`).
-```powershell
+Mở [http://localhost:5069](http://localhost:5069). Ở môi trường Development, ứng dụng tự tạo database `CustomerCareDB`, triển khai static index và nạp dữ liệu mẫu (seeder idempotent: đã có dữ liệu mẫu thì không ghi đè). Không cần thao tác thêm trên Studio trước khi dùng.
+
+Muốn trở lại bộ dữ liệu sạch giữa các lần demo: trong Studio, xóa database `CustomerCareDB`, rồi chạy lại `dotnet run --launch-profile http`.
+
+Ở môi trường khác Development, thêm tham số `--seed` hoặc đặt `Seed__OnStartup=true` nếu muốn nạp dữ liệu mẫu khi khởi động.
+
+## 7. Chạy test
+
+RavenDB phải đang chạy tại `http://127.0.0.1:8080` (đổi địa chỉ bằng biến môi trường `RAVEN_TEST_URL` nếu cần). Đứng ở thư mục gốc của repository, chỉ định file solution vì repo có cả `.sln` và `.slnx`:
+
+```bash
 dotnet test CustomerCareRavenDB.sln
 ```
 
-### 5. Khởi chạy ứng dụng Web
-```powershell
-dotnet run --project CustomerCareRavenDB
-```
-Truy cập vào địa chỉ hiển thị trên màn hình console (ví dụ: `http://localhost:5069`) để trải nghiệm Dashboard và trình thử nghiệm truy vấn RQL.
+Bộ kiểm thử hiện có 91 ca (model, kết nối, chứng chỉ, giới tính, toàn vẹn tham chiếu, id khác collection, seeder, static index). GitHub Actions cũng chạy bộ test này và một bước smoke test image Docker khi có push hoặc pull request vào nhánh `main`.
 
-Ở môi trường Development, ứng dụng tự tạo database, triển khai index và nạp dữ liệu mẫu; ở môi trường khác thêm tham số `--seed` hoặc đặt `Seed__OnStartup=true` để nạp dữ liệu mẫu. Trình thử RQL (`/Diagnostic/ExecuteRql`) chỉ bật mặc định trong Development (cấu hình `Diagnostics:EnableRqlEndpoint`).
+## 8. Cấu hình
 
----
+Kết nối RavenDB nằm trong section `RavenSettings` của `CustomerCareRavenDB/appsettings.json`, có thể ghi đè bằng biến môi trường theo quy ước `Section__Key`. Mẫu đầy đủ ở [`.env.example`](.env.example).
 
-## G. Triển Khai (Deploy) lên Render Free
-
-### 1. Kiến trúc
-Ứng dụng được deploy thành **một web service Free duy nhất** trên Render (region Singapore), dùng `Dockerfile` ở thư mục gốc:
-
-```
-Internet ──HTTPS──> Render proxy ──HTTP :$PORT (10000)──> ASP.NET Core app ──http://127.0.0.1:8080──> RavenDB (cùng container)
-```
-
-- RavenDB Server chạy **trong cùng container**, không bảo mật nhưng **chỉ bind `127.0.0.1`** (HTTP 8080, TCP 38888) và không được EXPOSE, nên không thể truy cập từ Internet. Chỉ app trong container gọi được.
-- Lý do không tách RavenDB thành service riêng: theo tài liệu Render, *web service Free không nhận được private network traffic*, và Free không có persistent disk.
-- `docker/entrypoint.sh` khởi động RavenDB trước, chờ `GET /build/version` trả về 200, rồi mới chạy app. Nếu một trong hai tiến trình dừng, container thoát để Render khởi động lại.
-- App tự tạo database `CustomerCareDB`, triển khai index và **nạp dữ liệu mẫu mỗi lần khởi động** (`Seed__OnStartup=true`, seeder idempotent).
-- RavenDB Studio **không khả dụng** trên bản deploy (`RavenSettings__StudioEnabled=false`); giao diện hiển thị nút "Studio không khả dụng" thay cho liên kết.
-
-### 2. Giới hạn cần biết (gói Free)
-| Giới hạn | Ảnh hưởng |
+| Khóa | Ý nghĩa |
 |---|---|
-| Không có persistent disk | **Mọi dữ liệu thêm/sửa sẽ mất** khi service restart, redeploy hoặc spin-down; sau đó dữ liệu mẫu được nạp lại. Chỉ phù hợp demo. |
-| Spin-down sau 15 phút không có request | Lần truy cập tiếp theo phải chờ khởi động lại (với 0.1 CPU: ~1-2 phút, RavenDB khởi động trước rồi tới app). |
-| 512 MB RAM, 0.1 CPU | Đo thực tế với `--memory=512m --cpus=0.1`: ~280-450 MiB (phần lớn là page cache của RavenDB, có thể thu hồi), không bị OOM khi tải 1500 request đồng thời. Trang đầu tiên sau khởi động chậm. |
-| Render có thể restart service Free bất kỳ lúc nào | Giống mất dữ liệu ở trên. |
-| Data Protection key lưu trong RavenDB | Mất khi restart → form đang mở trước khi restart cần tải lại trang (lỗi antiforgery). Key lưu không mã hóa (chỉ phù hợp demo). |
+| `RavenSettings:Urls` | Danh sách URL máy chủ RavenDB. Local mặc định `http://127.0.0.1:8080`. Biến môi trường: `RavenSettings__Urls__0`. |
+| `RavenSettings:DatabaseName` | Tên database, mặc định `CustomerCareDB`. |
+| `RavenSettings:CertificatePath` | Đường dẫn file chứng chỉ client `.pfx` khi RavenDB bật HTTPS. |
+| `RavenSettings:CertificateBase64` | Nội dung chứng chỉ `.pfx` mã hóa Base64 (tiện khi chạy trên PaaS). Được ưu tiên hơn `CertificatePath`. |
+| `RavenSettings:CertificatePassword` | Mật khẩu chứng chỉ, dùng chung cho cả hai cách trên. |
+| `RavenSettings:EnsureDatabaseOnStartup` | Tự tạo database nếu chưa có (mặc định `true`). Thiếu quyền tạo nhưng database đã tồn tại thì ứng dụng vẫn chạy tiếp. |
+| `RavenSettings:StudioEnabled` | Hiện liên kết RavenDB Studio trên giao diện (mặc định `true`). Đặt `false` khi RavenDB chỉ chạy nội bộ trong container. |
+| `Seed:OnStartup` | Nạp dữ liệu mẫu khi khởi động. Development luôn nạp; Production trên Render đặt `true`. |
+| `Diagnostics:EnableRqlEndpoint` | Bật endpoint chạy RQL trực tiếp (`/Diagnostic/ExecuteRql`). Mặc định `true` trong Development, `false` ở môi trường khác. |
 
-### 3. Các bước deploy trên Render
-1. Đẩy code lên nhánh `main` của GitHub.
-2. Render Dashboard → **New → Blueprint** → chọn repo này (Render đọc `render.yaml`). Hoặc tạo thủ công **New → Web Service** với:
-   - Runtime/Language: **Docker**
-   - Dockerfile Path: `./Dockerfile`
-   - Docker Build Context Directory: `.` (thư mục gốc repo)
-   - Instance Type: **Free**, Region: **Singapore**, Branch: `main`
-   - Health Check Path: `/healthz`
-3. Không cần khai báo bí mật nào. Các biến môi trường (đã có mặc định trong `Dockerfile`, `render.yaml` khai báo lại cho rõ):
+Chạy trong container/PaaS còn dùng `PORT` (cổng lắng nghe), `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` khi đứng sau reverse proxy, và `EMBEDDED_RAVENDB` (xem phần triển khai).
 
-| Biến | Giá trị | Ý nghĩa |
-|---|---|---|
-| `PORT` | Render tự đặt (10000) | Cổng app lắng nghe (`0.0.0.0:$PORT`) |
-| `ASPNETCORE_ENVIRONMENT` | `Production` | |
-| `ASPNETCORE_FORWARDEDHEADERS_ENABLED` | `true` | Tin `X-Forwarded-Proto/For` từ proxy Render (HTTPS, HSTS đúng) |
-| `RavenSettings__Urls__0` | `http://127.0.0.1:8080` | RavenDB nhúng |
-| `RavenSettings__DatabaseName` | `CustomerCareDB` | |
-| `RavenSettings__StudioEnabled` | `false` | Ẩn liên kết Studio |
-| `Seed__OnStartup` | `true` | Nạp dữ liệu mẫu khi khởi động |
-| `EMBEDDED_RAVENDB` | `true` | `false` = không chạy RavenDB nhúng, dùng RavenDB bên ngoài |
+Môi trường Development dùng kết nối HTTP không bảo mật, phù hợp máy cá nhân và buổi bảo vệ. Nếu kết nối tới RavenDB có HTTPS, cần cung cấp chứng chỉ client (tối thiểu quyền Admin trên database để triển khai index).
 
-4. Kiểm tra: `https://<tên-service>.onrender.com/healthz` trả về `{"status":"Healthy",...}` (HTTP 200; 503 nếu RavenDB chưa sẵn sàng).
+## 9. Triển khai
 
-`render.yaml` đặt `autoDeployTrigger: checksPass`: Render chỉ deploy commit mới trên `main` khi workflow CI pass.
+Ứng dụng được triển khai thành **một web service** trên Render (gói Free, region Singapore). Một container chạy đồng thời RavenDB (chỉ lắng nghe `127.0.0.1:8080` và `38888`, không mở ra Internet) và ứng dụng ASP.NET Core (lắng nghe `0.0.0.0:$PORT`). Lý do gộp chung: service Free không nhận được lưu lượng qua mạng riêng, và không có đĩa lưu trữ bền.
 
-### 4. Chạy image cục bộ (giống Render)
+Bản chạy thử: [https://customercare-ravendb.onrender.com](https://customercare-ravendb.onrender.com)
+
+Lưu ý trên gói Free:
+
+- **Dữ liệu sẽ bị reset.** Không có đĩa bền, nên mọi thay đổi mất khi service khởi động lại, deploy lại hoặc bị đưa vào trạng thái ngủ. Mỗi lần khởi động, ứng dụng nạp lại bộ dữ liệu mẫu (`Seed__OnStartup=true`).
+- Service **ngủ sau khoảng 15 phút không có truy cập**. Lần mở tiếp theo cần chờ khởi động lại (thường khoảng 1–2 phút). Nên mở sẵn site vài phút trước khi demo.
+- RavenDB Studio **không mở được** từ Internet (`RavenSettings__StudioEnabled=false`). Muốn xem document JSON và chạy RQL trên Studio, hãy dùng bản chạy local.
+
+Cấu hình nằm trong `Dockerfile`, `docker/entrypoint.sh` và `render.yaml`. Health check: `/healthz`. Đẩy code lên nhánh `main` thì Render tự deploy lại sau khi CI trên GitHub đạt.
+
+Chạy image giống bản deploy (tùy chọn, trên máy có Docker):
+
 ```bash
 docker build -t customercare-ravendb .
-docker run --rm -p 10000:10000 --memory=512m --cpus=0.1 customercare-ravendb
-# Mở http://localhost:10000 , health check: http://localhost:10000/healthz
+docker run --rm -p 10000:10000 --memory=512m customercare-ravendb
 ```
 
-### 5. (Tùy chọn) Dùng RavenDB bên ngoài có chứng chỉ
-Nếu sau này có RavenDB bảo mật (RavenDB Cloud hoặc server riêng), đặt `EMBEDDED_RAVENDB=false`, `RavenSettings__Urls__0=https://...`, `RavenSettings__StudioEnabled=true` và chứng chỉ client dạng Base64 (ưu tiên hơn `CertificatePath`), khai báo là biến bí mật, không commit:
-```bash
-base64 -w0 client-certificate.pfx            # Linux
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("client-certificate.pfx"))   # PowerShell
-```
-→ `RavenSettings__CertificateBase64=<chuỗi base64>`, `RavenSettings__CertificatePassword=<mật khẩu nếu có>`. Chứng chỉ cần tối thiểu quyền **Admin trên database** để deploy index (ReadWrite không đủ). Nếu chứng chỉ không có quyền tạo database nhưng database đã tồn tại, app vẫn tiếp tục.
-
-### 6. CI (GitHub Actions)
-`.github/workflows/ci.yml` chạy khi push/PR vào `main`:
-- **Build & test**: .NET 10 + RavenDB service container (`ravendb/ravendb:ubuntu-latest`, cổng 8080); test đọc URL từ `RAVEN_TEST_URL` (mặc định `http://127.0.0.1:8080`).
-- **Docker smoke test**: build image, chạy với `--memory=512m` và kiểm tra `/healthz`, `/`, `/Customers`.
-
----
-
-## H. Quy Ước Tích Hợp Dành Cho Quốc và Đạt (Integration Contract)
-
-1. **Sử dụng Data Layer:**
-   - Luôn tiêm `IRavenDbContext` qua constructor của Controller.
-   - Luôn mở Session bằng cú pháp `using var session = _context.OpenAsyncSession();`.
-   - Luôn lưu dữ liệu bằng `await session.SaveChangesAsync();`.
-2. **Kiểm tra ràng buộc tài liệu:**
-   - Tiêm `IDocumentValidator` để kiểm tra trước khi Store bản ghi:
-     - `ValidateAppointmentAsync` cho Appointment.
-     - `ValidateServiceHistoryAsync` cho ServiceHistory.
-     - `ValidateFeedbackAsync` cho Feedback.
-3. **Tra cứu tài liệu hướng dẫn chi tiết:**
-   - Đọc file [`Docs/INTEGRATION_GUIDE.md`](Docs/INTEGRATION_GUIDE.md) để lấy code mẫu Controller sẵn sàng chạy.
-
----
-
-## I. Hạn Chế Đã Biết (Known Limitations)
-
-1. Hệ thống hiện sử dụng xác thực kết nối nội bộ không bảo mật (Unsecured HTTP mode) cho môi trường Development trường học. Nếu triển khai Production qua Internet có bảo mật HTTPS, cần cấp file chứng chỉ `.pfx` vào thuộc tính `CertificatePath` trong `appsettings.json`.
-2. Chưa triển khai cơ chế phân quyền tài khoản người dùng đăng nhập (sẽ bổ sung nếu có yêu cầu thêm từ giảng viên).
-
----
-
-## J. Các Bước Tiếp Theo (Next Steps)
-
-1. **Cả nhóm:** Kiểm thử chéo toàn bộ 6 phân hệ trên nhánh `main` (các module của Quốc và Đạt đã được merge qua PR #2 và PR #3).
-2. **Quốc / Đạt:** Bổ sung kiểm tra tham chiếu khi xóa khách hàng (lịch hẹn/lịch sử/phản hồi đang tham chiếu) và phân trang cho các danh sách lớn.
-3. **Thanh:** Hỗ trợ giải đáp các thắc mắc về truy vấn RQL nâng cao, hỗ trợ kiểm thử tích hợp chéo giữa các module và tổng hợp báo cáo chung.
-
----
-
-## K. Thông Tin Cập Nhật Lần Cuối (Last Update)
-
-- **Ngày hoàn thành bàn giao:** 17/10/2026
-- **Branch bàn giao:** `feature/thanh-ravendb-foundation`
-- **Người bàn giao:** Thanh (Database Architect & Data Layer Engineer)
-- **Commit hash nền tảng:** `7ed75c7`
-- **Lịch sử commit:**
-  - `33d4ab5`: `feat(database): implement RavenDB foundation and document models`
-  - `66b2d7d`: `feat(database): add seeding and indexes`
-  - `eee7f1c`: `test(database): add RavenDB integration tests`
-  - `56dd992`: `docs: add setup guide and team progress report`
-  - `7ed75c7`: `docs: record commit references and finalize handoff report`
+Mở [http://localhost:10000](http://localhost:10000).
