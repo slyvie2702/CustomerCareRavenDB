@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="CustomerCareRavenDB.Tests/CustomerCareRavenDB.Tests.csproj" />
-  <Project Path="CustomerCareRavenDB/CustomerCareRavenDB.csproj" />
-</Solution>

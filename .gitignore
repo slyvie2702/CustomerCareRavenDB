@@ -25,6 +25,8 @@ build/
 *.snk
 *.cer
 *.crt
+*.pem
+*.p12
 
 ## RavenDB Local Data / Logs
 RavenData/

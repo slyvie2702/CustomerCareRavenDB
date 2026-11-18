@@ -102,7 +102,6 @@ public class DiagnosticController : Controller
 
     /// <summary>
     /// API mẫu kiểm tra validation quan hệ giữa Appointment, ServiceHistory và Feedback.
-    /// Quốc và Đạt có thể gọi endpoint này để thử nghiệm logic nghiệp vụ.
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
